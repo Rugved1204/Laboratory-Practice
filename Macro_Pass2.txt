@@ -1,0 +1,86 @@
+/* PROJECT NAME: SPOS
+PACKAGE NAME: MacroPass2 
+CLASS NAME: MacroPass2
+*/
+
+package MacroPass2;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+class MacroPass2 {
+    // Sample Data Structures based on Pass-I
+
+    // Macro Name Table (MNT)
+    private static Map<String, Integer> MNT = new HashMap<>(); // Macro Name -> MDT Start Index
+
+    // Macro Definition Table (MDT)
+    private static List<String> MDT = new ArrayList<>(); // Each entry is a line in a macro
+
+    // Method to initialize MNT and MDT with Pass-I data
+    private static void initializeTables() {
+        // Example Initialization (In real scenario, populate this from Pass-I output)
+        MNT.put("MACRO1", 0);
+        MDT.add("LDA &ARG1"); // Line 1 of MACRO1
+        MDT.add("ADD &ARG2"); // Line 2 of MACRO1
+        MDT.add("STA RESULT"); // Line 3 of MACRO1
+        MDT.add("MEND"); // End of MACRO1
+    }
+
+    // Main Pass-II Processing
+    public static List<String> processPassII(List<String> inputCode) {
+        List<String> outputCode = new ArrayList<>();
+
+        for (String line : inputCode) {
+            String[] tokens = line.split("\\s+");
+            String macroName = tokens[0];
+
+            if (MNT.containsKey(macroName)) {
+                // If line is a macro call, expand it
+                int mdtIndex = MNT.get(macroName);
+                Map<String, String> argumentArray = new HashMap<>();
+
+                // Populate Argument Array (AA)
+                for (int i = 1; i < tokens.length; i++) {
+                    argumentArray.put("&ARG" + i, tokens[i]);
+                }
+
+                // Expand macro from MDT
+                while (!MDT.get(mdtIndex).equals("MEND")) {
+                    String macroLine = MDT.get(mdtIndex);
+                    for (Map.Entry<String, String> entry : argumentArray.entrySet()) {
+                        // Replace formal parameters with actual arguments
+                        macroLine = macroLine.replace(entry.getKey(), entry.getValue());
+                    }
+                    outputCode.add(macroLine);
+                    mdtIndex++;
+                }
+            } else {
+                // If line is not a macro, add it directly to output
+                outputCode.add(line);
+            }
+        }
+
+        return outputCode;
+    }
+
+    public static void main(String[] args) {
+        initializeTables();
+
+        // Sample Input Code (Normally comes from a source file)
+        List<String> inputCode = new ArrayList<>();
+        inputCode.add("START");
+        inputCode.add("MACRO1 A, B");
+        inputCode.add("END");
+
+        // Process Pass-II
+        List<String> outputCode = processPassII(inputCode);
+
+        // Display Expanded Code
+        for (String line : outputCode) {
+            System.out.println(line);
+        }
+    }
+}

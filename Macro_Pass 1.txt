@@ -1,0 +1,120 @@
+/* PROJECT NAME: SPOS
+PACKAGE NAME: Macro1 
+CLASS NAME: Macro1
+*/
+
+
+package Macro1;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+class Macro1 {
+    static class MNTEntry {
+        String macroName;
+        int mdtIndex;
+
+        MNTEntry(String macroName, int mdtIndex) {
+            this.macroName = macroName;
+            this.mdtIndex = mdtIndex;
+        }
+    }
+
+    static class MDTEntry {
+        String instruction;
+
+        MDTEntry(String instruction) {
+            this.instruction = instruction;
+        }
+    }
+
+    static List<MNTEntry> MNT = new ArrayList<>();
+    static List<MDTEntry> MDT = new ArrayList<>();
+    static Map<String, Integer> ALA = new HashMap<>();
+    static int mdtPointer = 0;
+
+    public static void main(String[] args) {
+        String[] input = {
+            "MACRO",
+            "M1 &X, &Y, &A=AREG, &B=",
+            "MOVER &A, &X",
+            "ADD &A, ='1'",
+            "MOVER &B, &Y",
+            "ADD &B, ='5'",
+            "MEND",
+            "MACRO",
+            "M2 &P, &Q, &U=CREG, &V=DREG",
+            "MOVER &U, &P",
+            "MOVER &V, &Q",
+            "ADD &U, ='15'",
+            "ADD &V, ='10'",
+            "MEND",
+            "START 100",
+            "M1 10, 20, &B=CREG",
+            "M2 100, 200, &V=AREG, &U=BREG",
+            "END"
+        };
+
+        pass1(input);
+        printTables();
+    }
+
+    static void pass1(String[] input) {
+        boolean inMacroDefinition = false;
+        String macroName = null;
+
+        for (String line : input) {
+            String[] tokens = line.trim().split("\\s+");
+
+            if (tokens[0].equals("MACRO")) {
+                inMacroDefinition = true;
+            } else if (tokens[0].equals("MEND")) {
+                inMacroDefinition = false;
+                macroName = null;
+            } else if (inMacroDefinition) {
+                if (macroName == null) {
+                    macroName = tokens[0];
+                    MNT.add(new MNTEntry(macroName, mdtPointer));
+                    processALA(tokens);
+                } else {
+                    MDT.add(new MDTEntry(replaceArguments(line)));
+                    mdtPointer++;
+                }
+            }
+        }
+    }
+
+    static void processALA(String[] tokens) {
+        for (int i = 1; i < tokens.length; i++) {
+            String arg = tokens[i].replace(",", "");
+            String[] splitArg = arg.split("=");
+            ALA.put(splitArg[0], ALA.size() + 1);
+        }
+    }
+
+    static String replaceArguments(String line) {
+        for (Map.Entry<String, Integer> entry : ALA.entrySet()) {
+            line = line.replace(entry.getKey(), "#" + entry.getValue());
+        }
+        return line;
+    }
+
+    static void printTables() {
+        System.out.println("Macro Name Table (MNT):");
+        for (int i = 0; i < MNT.size(); i++) {
+            System.out.println(i + " : " + MNT.get(i).macroName + " " + MNT.get(i).mdtIndex);
+        }
+
+        System.out.println("\nMacro Definition Table (MDT):");
+        for (int i = 0; i < MDT.size(); i++) {
+            System.out.println(i + " : " + MDT.get(i).instruction);
+        }
+
+        System.out.println("\nArgument List Array (ALA):");
+        for (Map.Entry<String, Integer> entry : ALA.entrySet()) {
+            System.out.println(entry.getKey() + " -> #" + entry.getValue());
+        }
+    }
+}

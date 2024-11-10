@@ -1,0 +1,198 @@
+/* PROJECT NAME: SPOS
+PACKAGE NAME: AssemblerPass1
+CLASS NAME: AssemblerPass1
+*/
+
+package AssemblerPass1;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+// Class representing a symbol table entry
+class SymbolTableEntry {
+    String symbol;
+    int address;
+    int length;
+    boolean isEqu;
+
+    SymbolTableEntry(String symbol, int address, int length, boolean isEqu) {
+        this.symbol = symbol;
+        this.address = address;
+        this.length = length;
+        this.isEqu = isEqu;
+    }
+}
+
+// Class representing a literal table entry
+class LiteralTableEntry {
+    String literal;
+    int address;
+
+    LiteralTableEntry(String literal) {
+        this.literal = literal;
+        this.address = -1;  // Default until assigned during LTORG
+    }
+}
+
+// Class for Pass1 of the Assembler
+public class AssemblerPass1 {
+    private int locationCounter;
+    private List<SymbolTableEntry> symbolTable;
+    private List<LiteralTableEntry> literalTable;
+    private List<Integer> poolTable;
+    private List<String> intermediateCode;
+
+    public AssemblerPass1() {
+        locationCounter = 0;
+        symbolTable = new ArrayList<>();
+        literalTable = new ArrayList<>();
+        poolTable = new ArrayList<>();
+        intermediateCode = new ArrayList<>();
+        poolTable.add(0);  // Initialize first pool
+    }
+
+    public void processLine(String line) {
+        String[] tokens = line.split("\\s+");
+        
+        // Handle START directive
+        if (tokens[0].equals("START")) {
+            locationCounter = Integer.parseInt(tokens[1]);
+            intermediateCode.add(line + " " + locationCounter);
+            return;
+        }
+
+        // Handle other mnemonics and directives
+        if (tokens.length > 1) {
+            String label = tokens[0];
+            String mnemonic = tokens[1];
+
+            // If there's a label, add it to the symbol table
+            if (!label.isEmpty()) {
+                symbolTable.add(new SymbolTableEntry(label, locationCounter, 1, false));
+            }
+
+            switch (mnemonic) {
+                case "DS":
+                    int size = Integer.parseInt(tokens[2]);
+                    symbolTable.add(new SymbolTableEntry(label, locationCounter, size, false));
+                    locationCounter += size;
+                    break;
+
+                case "DC":
+                    symbolTable.add(new SymbolTableEntry(label, locationCounter, 1, false));
+                    locationCounter++;
+                    break;
+
+                case "EQU":
+                    handleEquDirective(label, tokens[2]);
+                    break;
+
+                case "LTORG":
+                    handleLtorg();
+                    break;
+
+                case "ORIGIN":
+                    locationCounter = calculateOrigin(tokens[2]);
+                    break;
+
+                case "END":
+                    handleLtorg();
+                    break;
+
+                default:
+                    locationCounter++;
+            }
+        }
+        
+        // Handle literals
+        if (tokens.length > 2 && tokens[2].startsWith("=")) {
+            literalTable.add(new LiteralTableEntry(tokens[2]));
+        }
+        
+        // Save line in intermediate code
+        intermediateCode.add(line + " " + locationCounter);
+    }
+
+    private void handleEquDirective(String symbol, String expression) {
+        // Evaluate EQU directive if possible (for simplicity assuming it’s a single addition)
+        int address = evaluateExpression(expression);
+        symbolTable.add(new SymbolTableEntry(symbol, address, 1, true));
+    }
+
+    private void handleLtorg() {
+        for (int i = poolTable.get(poolTable.size() - 1); i < literalTable.size(); i++) {
+            literalTable.get(i).address = locationCounter++;
+        }
+        poolTable.add(literalTable.size());  // New pool entry
+    }
+
+    private int calculateOrigin(String expression) {
+        // Evaluate ORIGIN expression (for simplicity assuming it’s a label + integer)
+        String[] parts = expression.split("\\+");
+        int baseAddress = 0;
+        for (SymbolTableEntry entry : symbolTable) {
+            if (entry.symbol.equals(parts[0])) {
+                baseAddress = entry.address;
+                break;
+            }
+        }
+        return baseAddress + Integer.parseInt(parts[1]);
+    }
+
+    private int evaluateExpression(String expression) {
+        // Simplified evaluation for expressions like A+1
+        String[] parts = expression.split("\\+");
+        int baseAddress = 0;
+        for (SymbolTableEntry entry : symbolTable) {
+            if (entry.symbol.equals(parts[0])) {
+                baseAddress = entry.address;
+                break;
+            }
+        }
+        return baseAddress + Integer.parseInt(parts[1]);
+    }
+
+    public void printTables() {
+        System.out.println("Symbol Table:");
+        for (SymbolTableEntry entry : symbolTable) {
+            System.out.println(entry.symbol + " " + entry.address + " " + entry.length);
+        }
+        System.out.println("------------");  // Single line separator
+
+        System.out.println("Literal Table:");
+        for (LiteralTableEntry entry : literalTable) {
+            System.out.println(entry.literal + " " + entry.address);
+        }
+        System.out.println("------------");  // Single line separator
+
+        System.out.println("Pool Table:");
+        for (int pool : poolTable) {
+            System.out.println(pool);
+        }
+        System.out.println("------------");  // Single line separator
+
+        System.out.println("Intermediate Code:");
+        for (String code : intermediateCode) {
+            System.out.println(code);
+        }
+        System.out.println("------------");  // Single line separator at end
+    }
+
+    public static void main(String[] args) {
+        AssemblerPass1 assembler = new AssemblerPass1();
+
+        String[] code = {
+            "START 100", "A DS 3", "L1 MOVER AREG, B", "ADD AREG, C", "MOVEM AREG, D",
+            "D EQU A+1", "L2 PRINT D", "ORIGIN L2+1", "MOVEM AREG, ='34'", "MOVEM AREG, ='14'",
+            "LTORG", "STOP", "MOVEM AREG, ='143'", "MOVEM AREG, ='134'", "B DC '19'", "C DC '17'", "END"
+        };
+
+        for (String line : code) {
+            assembler.processLine(line);
+        }
+
+        assembler.printTables();
+    }
+}

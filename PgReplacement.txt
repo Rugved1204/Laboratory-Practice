@@ -1,0 +1,63 @@
+/* PROJECT NAME: SPOS
+PACKAGE NAME: PgReplacement
+CLASS NAME: PgReplacement 
+*/
+
+
+package PgReplacement;
+
+import java.util.*;
+
+public class PgReplacement {
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        
+        // Get input: number of frames and reference string
+        System.out.print("Enter the number of frames: ");
+        int framesCount = scanner.nextInt();
+        
+        System.out.print("Enter the number of pages in the reference string: ");
+        int pagesCount = scanner.nextInt();
+        
+        int[] pages = new int[pagesCount];
+        System.out.println("Enter the page reference string:");
+        for (int i = 0; i < pagesCount; i++) {
+            pages[i] = scanner.nextInt();
+        }
+        
+        // Call LRU Page Replacement
+        int pageFaults = pageReplacementLRU(framesCount, pages);
+        System.out.println("Total Page Faults using LRU: " + pageFaults);
+        
+        scanner.close();
+    }
+
+    public static int pageReplacementLRU(int framesCount, int[] pages) {
+        Set<Integer> frames = new HashSet<>(framesCount);
+        Map<Integer, Integer> lastUsed = new HashMap<>();
+        int pageFaults = 0;
+        
+        for (int i = 0; i < pages.length; i++) {
+            int page = pages[i];
+            
+            if (!frames.contains(page)) {
+                // Page fault occurs
+                if (frames.size() == framesCount) {
+                    // Find the least recently used page
+                    int lruPage = Collections.min(lastUsed.entrySet(), Comparator.comparingInt(Map.Entry::getValue)).getKey();
+                    frames.remove(lruPage);
+                    lastUsed.remove(lruPage);
+                }
+                
+                frames.add(page);
+                pageFaults++;
+            }
+            
+            // Update last used time for the current page
+            lastUsed.put(page, i);
+        }
+        
+        return pageFaults;
+    }
+    
+}
